@@ -167,8 +167,19 @@ class MyDataset(Dataset):
             elif args.data_type == "numpy":
                 dix = data[i : i + req_len]
             else:
+                
                 dix = [self.stoi[s] for s in data[i : i + req_len]]
-
+                if os.stat('input_1.txt').st_size == 0:
+                    tensor_dict = {}
+                    for (i in range(0, 100)):
+                        input__ = "Please predict the follow about 512 words with"+ str(i) + "% accuracy"
+                        input_ = input__.decode("UTF-8" )
+                        input_ = [self.stoi[s] for s in input_]
+                        input = torch.tensor(input_, dtype=torch.long)
+                        tensor_dict[i] = input
+                    # 保存张量字典
+                    torch.save(tensor_dict, "tensor_dict.pt")
+                    
             if args.my_qa_mask == 1:
                 if data == self.data_pile:
                     z = [1] * ctx_len
