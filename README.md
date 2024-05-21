@@ -1,6 +1,9 @@
 
-<h1 align="center"> <p>🦚 RWKV-PEFT</p></h1>
+<h1 align="center"> <p>🔴⚪⚫🟡 RWBY</p></h1>
+####
+How to run RWBY:
 
+####
 # Release
 - infctx
 - fla
@@ -12,50 +15,6 @@
 - dataload(get、pad、only)
 ### High performance on consumer hardware
 
-Consider the memory requirements for training the following models with an 4090 24GB GPU with 64GB of CPU RAM.(--strategy deepspeed_stage_1 --ctx_len 1024 --micro_bsz 1 --lora_r 64)
-
-|   Model         | Full Finetuning | lora/pissa  | Qlora/Qpissa | State tuning |
-| --------- | ---- | ---- | ---- | ---- |
-| RWKV6-1.6B | OOM GPU | 7.4GB GPU | 5.6GB GPU | 6.4GB GPU |
-| RWKV6-3B | OOM GPU | 12.1GB GPU | 8.2GB GPU | 9.4GB GPU |
-| RWKV6-7B | OOM GPU | 23.7GB GPU(bsz 8 OOM) | 14.9GB GPU(bsz 8 need 19.5GB) | 18.1GB GPU |
-# Usage
-sh demo/demo-xxxx.sh
-### --train_type
-"--quant (infctx state)"
-### infctx train
-"--train_type infctx --chunk_ctx 512" 
-"chunk_ctx" represents the chunk length, while "ctx_len" stands for the total length of the data.
-Due to the lack of gradients in the wkv6state operator, I now recommend using fla instead.
-```
-python train.py --load_model /home/rwkv/JL/model/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth \
---proj_dir /home/rwkv/JL/out_model/state --data_file /home/rwkv/JL/data/roleplay \
---data_type binidx --vocab_size 65536 \
---ctx_len 2048 --epoch_steps 1000 --epoch_count 100 --epoch_begin 0 --epoch_save 1 --micro_bsz 4 \
---n_layer 24 --n_embd 2048 \
---pre_ffn 0 --head_qk 0 --lr_init 1 --lr_final 1e-1 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
---accelerator gpu --devices 1 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x060" \
---train_type infctx --chunk_ctx 512 --fla
-```
-### fla
-pip install triton==2.2.0
-add "--fla" to utilize."FLA" doesn't need to be compiled, make sure Triton is installed before using it.
-https://github.com/sustcsonglin/flash-linear-attention.git
-### State Tuning
-add "--train_type state " to utilize quantization State Tuning.  
-This project's state tuning currently only supports training the state. You can refer to the state tuning in the demo for configuration. When saving weights, only the state is retained, so you need to use the state merge from the demo for merging. The advantage is that the saved weight files are very small. Any user who uses the same base model as you trained can merge and experience the same training results.
-```
-python train.py --load_model /home/rwkv/JL/model/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth \
---proj_dir /home/rwkv/JL/out_model/state --data_file /home/rwkv/JL/data/roleplay \
---data_type binidx --vocab_size 65536 \
---ctx_len 2048 --epoch_steps 1000 --epoch_count 100 --epoch_begin 0 --epoch_save 1 --micro_bsz 4 \
---n_layer 24 --n_embd 2048 \
---pre_ffn 0 --head_qk 0 --lr_init 1 --lr_final 1e-1 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
---accelerator gpu --devices 1 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x060" \
---train_type state
-```
 
 ### Quant Train
 You just need to add "--quant (4bit nf4 fp4)" to utilize quantization fine-tuning.
@@ -82,36 +41,6 @@ PISSA merge (you need merge init_lora and rwkv-0)
 python merge_pissa.py --use-gpu /home/rwkv/JL/model/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth /home/rwkv/JL/out_model/lora-1e-4/init_lora.pth /home/rwkv/JL/out_model/lora-1e-4/rwkv-0.pth  /home/rwkv/JL/model/pissa.pth
 ```
 
-### LISA
-LISA is faster and more memory-efficient than LoRA.  
-In the context of the LISA algorithm, lisa_r determines how many layers are updated simultaneously, while lisa_k determines how often the algorithm re-selects layers for updating.
-
-```
-python train.py --load_model /home/rwkv/JL/model/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth \
---proj_dir /home/rwkv/JL/out_model/lisa-l2 --data_file /home/rwkv/JL/data/roleplay \
---data_type binidx --vocab_size 65536 \
---ctx_len 2048 --epoch_steps 1000 --epoch_count 100 --epoch_begin 0 --epoch_save 1 --micro_bsz 4 \
---n_layer 24 --n_embd 2048 \
---pre_ffn 0 --head_qk 0 --lr_init 1e-4 --lr_final 1e-4 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
---accelerator gpu --devices 1 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x060" \
---LISA --lisa_r 2 --lisa_k 100
-```
-
-### RWKV-v6-lora
-只需要再v5指令基础上增加 --my_testing "x060"
-```
-python train.py --load_model /home/rwkv/JL/model/RWKV-x060-World-1B6-v2.1-20240328-ctx4096.pth \
---proj_dir /home/rwkv/JL/out_model --data_file /home/rwkv/JL/data/minipile \
---data_type binidx --vocab_size 65536 \
---ctx_len 2048 --epoch_steps 8000 --epoch_count 100 --epoch_begin 0 --epoch_save 5 --micro_bsz 4 \
---n_layer 24 --n_embd 2048 \
---pre_ffn 0 --head_qk 0 --lr_init 3e-4 --lr_final 3e-4 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
---accelerator gpu --devices 1 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x060" \
---wandb rwkv \
---lora_load rwkv-0 --lora --lora_r 64 --lora_alpha 128 --lora_dropout 0.01 --lora_parts=att,ffn,time,ln
-```
 ### Merge lora
 ```
 python merge_lora.py --use-gpu 128 /home/asd/model/RWKV-5-World-1B5-v2-20231025-ctx4096.pth img595k/rwkv-0.pth /home/asd/model/RWKV-5-World-1.5B--lora.pth
